@@ -293,9 +293,9 @@ class MultistageEnvelope {
   }
   
  private:
-  int16_t level_[kMaxNumSegments];
-  uint16_t time_[kMaxNumSegments];
-  EnvelopeShape shape_[kMaxNumSegments];
+  int16_t level_[kMaxNumSegments] = {};
+  uint16_t time_[kMaxNumSegments] = {};
+  EnvelopeShape shape_[kMaxNumSegments] = {};
   
   int16_t segment_;
   int16_t start_value_;
