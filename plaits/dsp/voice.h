@@ -170,6 +170,20 @@ class Voice {
   void ReloadUserData() {
     reload_user_data_ = true;
   }
+  // VCV Rack: per-instance custom data for an engine (DX7 bank, terrain or
+  // wavetable), used instead of UserData, whose ptr() is always NULL when TEST
+  // is defined. The data is not copied and must outlive its use. NULL reverts
+  // to the built-in data. Call after Init(), synchronized with Render(), and
+  // retain the buffer until it is safely replaced or cleared.
+  void set_user_data(int engine, const uint8_t* data) {
+    if (engine < 0 || engine >= kMaxEngines) {
+      return;
+    }
+    user_data_[engine] = data;
+    if (engine == previous_engine_index_) {
+      reload_user_data_ = true;
+    }
+  }
   void Render(
       const Patch& patch,
       const Modulations& modulations,
@@ -230,6 +244,7 @@ class Voice {
   stmlib::HysteresisQuantizer2 engine_quantizer_;
   
   bool reload_user_data_;
+  const uint8_t* user_data_[kMaxEngines];
   int previous_engine_index_;
   float engine_cv_;
   
