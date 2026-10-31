@@ -48,6 +48,8 @@ class Arpeggiator{
   
   void Init() {
     mode_ = ARPEGGIATOR_MODE_UP;
+    // VCV Rack: not set by the firmware, which relies on zeroed static memory.
+    range_ = 1;
     Reset();
   }
   

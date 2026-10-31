@@ -37,7 +37,10 @@ using namespace stmlib;
 
 void ChiptuneEngine::Init(BufferAllocator* allocator) {
   bass_.Init();
-  for (int i = 0; i < kChordNumNotes; ++i) {
+  // VCV Rack: initialize all kChordNumVoices oscillators, not kChordNumNotes.
+  // The firmware relies on its static memory being zeroed. On the heap, a NaN
+  // phase in the last oscillator hangs SuperSquareOscillator::Render().
+  for (int i = 0; i < kChordNumVoices; ++i) {
     voice_[i].Init();
   }
   
