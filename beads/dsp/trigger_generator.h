@@ -34,6 +34,8 @@
 
 #include <algorithm>
 
+#include "beads/dsp/random.h"
+
 namespace beads {
 
 enum SeedButtonState {
@@ -55,7 +57,10 @@ class TriggerGenerator {
     float phase;
   };
 
-  void Init(float sample_rate);
+  void Init(float sample_rate, Random* random = NULL) {
+    random_ = random ? random : &fallback_random_;
+    InitInternal(sample_rate);
+  }
   
   void Render(
       SeedButtonState seed_button_state,
@@ -80,6 +85,8 @@ class TriggerGenerator {
       Output* out,
       size_t size);
 
+  void InitInternal(float sample_rate);
+
   float phase_;
   float frequency_;
   float target_frequency_;
@@ -102,6 +109,8 @@ class TriggerGenerator {
   int default_reset_interval_;
   
   stmlib::GateFlags previous_flags_;
+  Random fallback_random_;
+  Random* random_ = &fallback_random_;
 
   DISALLOW_COPY_AND_ASSIGN(TriggerGenerator);
 };

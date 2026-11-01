@@ -69,7 +69,7 @@ class Processor {
     bool output_gate;
   };
   
-  void Init(uint8_t* buffers[], uint16_t* reverb_buffer);
+  void Init(uint8_t* buffers[], uint16_t* reverb_buffer, Random* random = NULL);
   void Configure(Media media, bool mono);
   
   inline Media media() const { return media_; }
@@ -190,6 +190,8 @@ class Processor {
 
   TriggerGenerator trigger_generator_;
   DelayController delay_controller_;
+  Random fallback_random_;
+  Random* random_ = &fallback_random_;
   
   Media media_;
   bool process_dry_;

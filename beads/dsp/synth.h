@@ -54,7 +54,7 @@ class Synth {
     RESOLUTION_16_BIT
   };
   
-  void Init(uint16_t* reverb_buffer);
+  void Init(uint16_t* reverb_buffer, Random* random = NULL);
   void Reset();
   
   void Render(
@@ -70,6 +70,8 @@ class Synth {
   
  private:
   TriggerGenerator trigger_generator_;
+  Random fallback_random_;
+  Random* random_ = &fallback_random_;
   
   float dry_;
   float wet_;

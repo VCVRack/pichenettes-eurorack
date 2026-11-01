@@ -57,7 +57,7 @@ void DelayClock::Init(float sample_rate) {
 }
 
 void DelayClock::Process(bool tick, bool tap) {
-  ++next_interval_;
+  if (next_interval_ < max_interval_) ++next_interval_;
 
   fade_ += fade_increment_;
   if (fade_ >= 1.0f) {
@@ -88,7 +88,7 @@ void DelayClock::Process(bool tick, bool tap) {
   const bool can_change = tap || (fade_ >= 1.0f);
 
   if (schedule_change_ && can_change) {
-    ++rotate_;
+    rotate_ ^= 1;
     interval_[0] = interval_[1];
     interval_[1] = average_interval_;
 

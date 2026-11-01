@@ -32,24 +32,25 @@
 #include "stmlib/stmlib.h"
 
 #include "stmlib/dsp/units.h"
-#include "stmlib/utils/random.h"
+#include "beads/dsp/random.h"
 
 #include "beads/resources.h"
 
+
 namespace beads {
 
-inline float CenteredUniform() {
-  return 2.0f * stmlib::Random::GetFloat() - 1.0f;
+inline float CenteredUniform(Random& random) {
+  return 2.0f * random.GetFloat() - 1.0f;
 }
 
-inline float PseudoGaussian() {
-  const float u = stmlib::Random::GetFloat();
+inline float PseudoGaussian(Random& random) {
+  const float u = random.GetFloat();
   return u * (u * (4.0f * u - 6.0f) + 4.0f) - 1.0f;
 }
 
-inline float BoundedRandomFloat(float spread) {
-  const float u = stmlib::Random::GetFloat();
-  const float v = stmlib::Random::GetFloat();
+inline float BoundedRandomFloat(Random& random, float spread) {
+  const float u = random.GetFloat();
+  const float v = random.GetFloat();
   return 0.5f + (u - 0.5f) * std::min(spread * v, 1.0f);
 }
 
@@ -66,14 +67,14 @@ class RandomWalkModulation {
     to_ = 1.0f;
   }
   
-  float value(float attenuverter, size_t step_size) {
+  float value(float attenuverter, size_t step_size, Random& random) {
     float frequency = (attenuverter <= 0.0f ? 0.25f : 4.0f) * frequency_ * \
         float(step_size);
     phase_ += frequency;
     if (phase_ >= 1.0f) {
       phase_ -= 1.0f;
       from_ = to_;
-      to_ = CenteredUniform();
+      to_ = CenteredUniform(random);
     }
     return from_ + (to_ - from_) * stmlib::SmoothStep(phase_);
   }
@@ -92,6 +93,12 @@ struct RandomizedParameter {
   float attenuverter;
   float cv;
   bool has_cv;
+  Random* random = NULL;
+  mutable Random fallback_random;
+
+  inline Random& random_source() const {
+    return random ? *random : fallback_random;
+  }
   
   inline float randomness_amount() const {
     if (has_cv) {
@@ -107,27 +114,28 @@ struct RandomizedParameter {
       float range,
       bool clamp) const {
     float result = base;
+    Random& rng = random_source();
 
     if (!has_cv) {
       // The attenuverter controls the type of internal modulation.
       if (modulation) {
         result += attenuverter * range * modulation->value(
-            attenuverter, step_size);
+            attenuverter, step_size, rng);
       } else {
         const float blend = attenuverter > 0.0f
             ? attenuverter
             : std::min(1.0f,
-              attenuverter * stmlib::Random::GetFloat() * -3.0f);
+              attenuverter * rng.GetFloat() * -3.0f);
         
         const float random_value = !clamp
-            ? CenteredUniform() * range
-            : stmlib::Random::GetFloat() * range - result;
+            ? CenteredUniform(rng) * range
+            : rng.GetFloat() * range - result;
         result += random_value * blend;
       }
     } else {
       if (attenuverter < 0.0f) {
         const float extra_modulation = (modulation ? modulation->value(
-              1.0f, step_size) : PseudoGaussian());
+              1.0f, step_size, rng) : PseudoGaussian(rng));
         result += std::max(cv, 0.0f) * -attenuverter * extra_modulation;
       } else {
         result += attenuverter * cv;

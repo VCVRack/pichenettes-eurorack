@@ -29,6 +29,8 @@
 #ifndef BEADS_DSP_GRANULAR_PLAYER_H_
 #define BEADS_DSP_GRANULAR_PLAYER_H_
 
+#include <limits>
+
 #include "stmlib/stmlib.h"
 
 #include "beads/dsp/grain.h"
@@ -123,13 +125,14 @@ class GranularPlayer {
 
     const float total_spread = ComputeSpread(trigger, p);
     const float pan_spread = 0.5f * num_active_grains * total_spread;
-    *pan = BoundedRandomFloat(pan_spread);
+    *pan = BoundedRandomFloat(p.time.random_source(), pan_spread);
   }
   
   inline T* new_grain() { return grain_priority_list_[0]; }
   
   inline void Tick() {
-    ++grain_interval_;
+    // SortGrainList adds one when choosing a crossfade duration.
+    if (grain_interval_ < std::numeric_limits<int>::max() - 1) ++grain_interval_;
   }
   
   inline void SortGrainList(bool monophonic_mode) {

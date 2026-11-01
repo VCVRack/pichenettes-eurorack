@@ -114,7 +114,7 @@ class GranularProcessor {
   }
   
   inline void WasteCPUCycles(size_t size) {
-    Parameters p;
+    Parameters p{};
   
     p.time.base = 0.0f;
     p.time.attenuverter = 1.0f;
@@ -139,7 +139,7 @@ class GranularProcessor {
     out.r = 0.0f;
     
     for (size_t i = 0; i < size; ++i) {
-      TriggerGenerator::Output trigger;
+      TriggerGenerator::Output trigger{};
       trigger.trigger = i == 0;
       trigger.fractional_sample = 0.0f;
       

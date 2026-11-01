@@ -35,7 +35,8 @@ namespace beads {
 using namespace std;
 using namespace stmlib;
 
-void Synth::Init(uint16_t* reverb_buffer) {
+void Synth::Init(uint16_t* reverb_buffer, Random* random) {
+  random_ = random ? random : &fallback_random_;
   const float sr = 48000.0f;
   
   reverb_.Init(reverb_buffer, sr);
@@ -43,7 +44,7 @@ void Synth::Init(uint16_t* reverb_buffer) {
   dry_ = 0.0f;
   wet_ = 0.0f;
   
-  trigger_generator_.Init(sr);
+  trigger_generator_.Init(sr, random_);
   pre_reverb_limiter_.Init(1.0f / (sr * 4.0f), 0.9f);
   output_limiter_.Init(1.0f / (sr * 6.0f), 0.9f);
   wavetable_granular_player_.Init(sr);
@@ -63,6 +64,7 @@ void Synth::Render(
     size_t size) {
   
   Parameters p = parameters;
+  p.time.random = p.size.random = p.shape.random = p.pitch.random = random_;
   p.pitch.base = p.pitch.base + (p.pitch.has_cv ? p.pitch.cv : 0.0f);
   p.pitch.has_cv = false;
   

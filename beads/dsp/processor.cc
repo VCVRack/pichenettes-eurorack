@@ -42,7 +42,9 @@ using namespace stmlib;
 
 void Processor::Init(
     uint8_t* buffers[],
-    uint16_t* reverb_buffer) {
+    uint16_t* reverb_buffer,
+    Random* random) {
+  random_ = random ? random : &fallback_random_;
   processor_digital_.Init(48000.0f, buffers);
   processor_vintage_digital_.Init(32000.0f, buffers);
   processor_clean_tape_.Init(24000.0f, buffers);
@@ -53,10 +55,10 @@ void Processor::Init(
   
   reverb_.Init(reverb_buffer, 48000.0f);
 #ifdef ENABLE_HARDWARE_24K
-  wow_and_flutter_.Init(24000.0f);
+  wow_and_flutter_.Init(24000.0f, random_);
   wow_and_flutter_.set_lp(0.95f);
 #else
-  wow_and_flutter_.Init(48000.0f);
+  wow_and_flutter_.Init(48000.0f, random_);
   wow_and_flutter_.set_lp(0.6f);
 #endif  // ENABLE_HARDWARE_24K
 
@@ -94,7 +96,7 @@ void Processor::Configure(Media media, bool mono) {
   float sr = sample_rate();
   pre_reverb_limiter_.Init(1.0f / (sr * 4.0f), 0.9f);
   output_limiter_.Init(1.0f / (sr * 6.0f), 0.9f);
-  trigger_generator_.Init(sr);
+  trigger_generator_.Init(sr, random_);
   delay_controller_.Init(sr, max_delay * (mono ? 2 : 1));
   reverb_.Reset(sr);
 }
@@ -109,9 +111,11 @@ void Processor::Process(
     const FloatFrame* in,
     FloatFrame* out,
     size_t size) {
+  Parameters p = parameters;
+  p.time.random = p.size.random = p.shape.random = p.pitch.random = random_;
   const float delay_mode = delay_mode_transition_ > 0.0f;
   const float threshold = delay_mode ? 0.98f : 0.99f;
-  const float direction = parameters.size.base > threshold ? 1.0f : -1.0f;
+  const float direction = p.size.base > threshold ? 1.0f : -1.0f;
   delay_mode_transition_ += direction * float(size) / sample_rate();
   
   CONSTRAIN(delay_mode_transition_,
@@ -138,8 +142,8 @@ void Processor::Process(
         density.base,
         (1.0f - expo_fm_amount) * density.cv,
         expo_fm_amount * density.cv,
-        parameters.time,
-        parameters.shape,
+        p.time,
+        p.shape,
         taps,
         size);
     for (size_t i = 0; i < size; ++i) {
@@ -167,13 +171,13 @@ void Processor::Process(
   switch (media_) {
     case MEDIA_DIGITAL:
       processor_digital_.Process(
-          triggers, taps, freeze, parameters, feedback, mono_, in, out, size);
+          triggers, taps, freeze, p, feedback, mono_, in, out, size);
       copy(&in[0], &in[size], &dry_signal[0]);
       break;
     
     case MEDIA_VINTAGE_DIGITAL:
       processor_vintage_digital_.Process(
-          triggers, taps, freeze, parameters, feedback, mono_, in, out, size);
+          triggers, taps, freeze, p, feedback, mono_, in, out, size);
       for (size_t i = 0; i < size; ++i) {
         dry_signal[i].l = static_cast<int32_t>(in[i].l * 4096.0f) / 4096.0f;
         dry_signal[i].r = static_cast<int32_t>(in[i].r * 4096.0f) / 4096.0f;
@@ -182,14 +186,14 @@ void Processor::Process(
     
     case MEDIA_CLEAN_TAPE:
       processor_clean_tape_.Process(
-          triggers, taps, freeze, parameters, feedback, mono_, in, out,
+          triggers, taps, freeze, p, feedback, mono_, in, out,
           size);
       copy(&in[0], &in[size], &dry_signal[0]);
       break;
     
     case MEDIA_DIRTY_TAPE:
       processor_dirty_tape_.Process(
-          triggers, taps, freeze, parameters, feedback, mono_, in, out,
+          triggers, taps, freeze, p, feedback, mono_, in, out,
           size);
       for (size_t i = 0; i < size; ++i) {
         dry_signal[i].l = MuLaw2Lin(

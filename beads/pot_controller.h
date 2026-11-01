@@ -62,6 +62,7 @@ class PotController {
     state_ = POT_STATE_TRACKING;
     was_catching_up_ = false;
 
+    main_parameter_ = hidden_parameter_ = 0.0f;
     value_ = 0.0f;
     stored_value_ = 0.0f;
     previous_value_ = 0.0f;
