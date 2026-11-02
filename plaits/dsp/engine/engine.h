@@ -46,11 +46,11 @@ enum TriggerState {
   TRIGGER_LOW = 0,
   TRIGGER_RISING_EDGE = 1,
   TRIGGER_UNPATCHED = 2,
-  TRIGGER_UNPATCHED_AUTOTRIGGED = 3,
+  TRIGGER_HIGH = 4,
 };
 
 struct EngineParameters {
-  TriggerState trigger;
+  int trigger;
   float note;
   float timbre;
   float morph;
@@ -75,12 +75,18 @@ struct PostProcessingSettings {
   bool already_enveloped;
 };
 
+// Size of an engine's custom data: one flash page on hardware (UserData::SIZE).
+// LoadUserData() may read up to this many bytes from a non-NULL pointer, and
+// every engine that reads custom data checks its layout fits at compile time.
+const size_t kMaxUserDataSize = 0x1000;
+
 class Engine {
  public:
   Engine() { }
   ~Engine() { }
   virtual void Init(stmlib::BufferAllocator* allocator) = 0;
   virtual void Reset() = 0;
+  virtual void LoadUserData(const uint8_t* user_data) = 0;
   virtual void Render(
       const EngineParameters& parameters,
       float* out,

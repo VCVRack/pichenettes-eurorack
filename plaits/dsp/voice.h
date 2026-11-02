@@ -53,13 +53,20 @@
 #include "plaits/dsp/engine/waveshaping_engine.h"
 #include "plaits/dsp/engine/wavetable_engine.h"
 
+#include "plaits/dsp/engine2/chiptune_engine.h"
+#include "plaits/dsp/engine2/phase_distortion_engine.h"
+#include "plaits/dsp/engine2/six_op_engine.h"
+#include "plaits/dsp/engine2/string_machine_engine.h"
+#include "plaits/dsp/engine2/virtual_analog_vcf_engine.h"
+#include "plaits/dsp/engine2/wave_terrain_engine.h"
+
 #include "plaits/dsp/envelope.h"
 
 #include "plaits/dsp/fx/low_pass_gate.h"
 
 namespace plaits {
 
-const int kMaxEngines = 16;
+const int kMaxEngines = 24;
 const int kMaxTriggerDelay = 8;
 const int kTriggerDelay = 5;
 
@@ -146,6 +153,9 @@ struct Modulations {
   bool level_patched;
 };
 
+// char (*__foo)[sizeof(HiHatEngine)] = 1;
+
+
 class Voice {
  public:
   Voice() { }
@@ -157,6 +167,30 @@ class Voice {
   };
   
   void Init(stmlib::BufferAllocator* allocator);
+  void ReloadUserData() {
+    reload_user_data_ = true;
+  }
+  // VCV Rack: per-instance custom data for an engine (DX7 bank, terrain or
+  // wavetable), used instead of UserData, whose ptr() is always NULL when TEST
+  // is defined. The data is not copied and must outlive its use. NULL reverts
+  // to the built-in data. Call after Init(), synchronized with Render(), and
+  // retain the buffer until it is safely replaced or cleared.
+  //
+  // size is the number of readable bytes at data. Engines may read up to
+  // kMaxUserDataSize bytes, so shorter data is rejected and the engine keeps
+  // its built-in data, rather than trusting the caller to have padded it.
+  void set_user_data(int engine, const uint8_t* data, size_t size) {
+    if (engine < 0 || engine >= kMaxEngines) {
+      return;
+    }
+    if (size < kMaxUserDataSize) {
+      data = NULL;
+    }
+    user_data_[engine] = data;
+    if (engine == previous_engine_index_) {
+      reload_user_data_ = true;
+    }
+  }
   void Render(
       const Patch& patch,
       const Modulations& modulations,
@@ -188,26 +222,36 @@ class Voice {
     CONSTRAIN(value, minimum_value, maximum_value);
     return value;
   }
-  
-  AdditiveEngine additive_engine_;
-  BassDrumEngine bass_drum_engine_;
-  ChordEngine chord_engine_;
-  FMEngine fm_engine_;
-  GrainEngine grain_engine_;
-  HiHatEngine hi_hat_engine_;
-  ModalEngine modal_engine_;
-  NoiseEngine noise_engine_;
-  ParticleEngine particle_engine_;
-  SnareDrumEngine snare_drum_engine_;
-  SpeechEngine speech_engine_;
-  StringEngine string_engine_;
-  SwarmEngine swarm_engine_;
+
   VirtualAnalogEngine virtual_analog_engine_;
   WaveshapingEngine waveshaping_engine_;
+  FMEngine fm_engine_;
+  GrainEngine grain_engine_;
+  AdditiveEngine additive_engine_;
   WavetableEngine wavetable_engine_;
+  ChordEngine chord_engine_;
+  SpeechEngine speech_engine_;
 
-  stmlib::HysteresisQuantizer engine_quantizer_;
+  SwarmEngine swarm_engine_;
+  NoiseEngine noise_engine_;
+  ParticleEngine particle_engine_;
+  StringEngine string_engine_;
+  ModalEngine modal_engine_;
+  BassDrumEngine bass_drum_engine_;
+  SnareDrumEngine snare_drum_engine_;
+  HiHatEngine hi_hat_engine_;
   
+  VirtualAnalogVCFEngine virtual_analog_vcf_engine_;
+  PhaseDistortionEngine phase_distortion_engine_;
+  SixOpEngine six_op_engine_;
+  WaveTerrainEngine wave_terrain_engine_;
+  StringMachineEngine string_machine_engine_;
+  ChiptuneEngine chiptune_engine_;
+
+  stmlib::HysteresisQuantizer2 engine_quantizer_;
+  
+  bool reload_user_data_;
+  const uint8_t* user_data_[kMaxEngines];
   int previous_engine_index_;
   float engine_cv_;
   

@@ -102,6 +102,7 @@ class Oscillator {
       CONSTRAIN(pw, fabsf(frequency) * 2.0f, 1.0f - 2.0f * fabsf(frequency))
     }
     
+    float previous_pw = pw_;
     stmlib::ParameterInterpolator fm(&frequency_, frequency, size);
     stmlib::ParameterInterpolator pwm(&pw_, pw, size);
   
@@ -156,7 +157,12 @@ class Oscillator {
           slope_down = 1.0f / (1.0f - pw);
         }
         if (high_ ^ (phase_ < pw)) {
-          float t = (phase_ - pw) / frequency;
+          // The breakpoint moves with PWM. Use its velocity relative to
+          // the phase, as in VariableShapeOscillator, not frequency alone.
+          float relative_velocity = frequency + (previous_pw - pw);
+          float t = relative_velocity != 0.0f
+              ? (phase_ - pw) / relative_velocity : 0.0f;
+          CONSTRAIN(t, 0.0f, 1.0f);
           float discontinuity = (slope_up + slope_down) * frequency;
           if (through_zero_fm && frequency < 0.0f) {
             discontinuity = -discontinuity;
@@ -165,6 +171,7 @@ class Oscillator {
           next_sample -= stmlib::NextIntegratedBlepSample(t) * discontinuity;
           high_ = phase_ < pw;
         }
+        previous_pw = pw;
         if (phase_ >= 1.0f) {
           phase_ -= 1.0f;
           float t = phase_ / frequency;
