@@ -107,6 +107,32 @@ float Quantizer::Process(float value, float amount, bool hysteresis) {
     }
     note_fractional *= base_interval_;
     
+    // Guard against levels that contain no degrees.
+    //
+    // Init() builds one level per weight threshold. A level whose threshold
+    // is above every degree's weight gets an empty bitmask and first = 0xff,
+    // and the bound computation below would then read voltage_[0xff], far
+    // past the end of voltage_[kMaxDegrees]. This is undefined behavior, on
+    // hardware as well as in other hosts.
+    //
+    // This happens in practice on Marbles' Y channel. LoadScale(scale_index,
+    // scale) only loads the X channels, so Y keeps the default Scale::Init():
+    // a single degree at 0 V with weight 0. Only the first level (threshold 0)
+    // contains it, so raising Y STEPS past that level hit the bad read. When
+    // the stray memory happens to be zero, Y rounds up to the next octave
+    // instead of to the nearest one.
+    //
+    // Falling back to the nearest lower level that has degrees keeps the
+    // behavior the scale does define: for Y's default scale, nearest-octave
+    // rounding at every quantized setting. A level is empty exactly when the
+    // old code read out of bounds, so every other case is unchanged.
+    while (!level_[level].bitmask && level > 0) {
+      --level;
+    }
+    if (!level_[level].bitmask) {
+      return value;
+    }
+
     // Search for the tightest upper/lower bound in the set of available
     // voltages. stl::upper_bound / stl::lower_bound wouldn't work here
     // because some entries are masked.
