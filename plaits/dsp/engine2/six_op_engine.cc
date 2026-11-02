@@ -72,6 +72,11 @@ void FMVoice::LoadPatch(const fm::Patch* patch) {
 
 const int kNumPatchesPerBank = 32;
 
+// Custom data: one DX7 bank of packed patches, filling the user data page.
+static_assert(
+    kNumPatchesPerBank * fm::Patch::SYX_SIZE <= kMaxUserDataSize,
+    "DX7 bank exceeds the user data page");
+
 void SixOpEngine::Init(BufferAllocator* allocator) {
   patch_index_quantizer_.Init(32, 0.005f, false);
 

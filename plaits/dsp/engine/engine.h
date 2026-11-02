@@ -75,6 +75,11 @@ struct PostProcessingSettings {
   bool already_enveloped;
 };
 
+// Size of an engine's custom data: one flash page on hardware (UserData::SIZE).
+// LoadUserData() may read up to this many bytes from a non-NULL pointer, and
+// every engine that reads custom data checks its layout fits at compile time.
+const size_t kMaxUserDataSize = 0x1000;
+
 class Engine {
  public:
   Engine() { }

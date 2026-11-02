@@ -175,9 +175,16 @@ class Voice {
   // is defined. The data is not copied and must outlive its use. NULL reverts
   // to the built-in data. Call after Init(), synchronized with Render(), and
   // retain the buffer until it is safely replaced or cleared.
-  void set_user_data(int engine, const uint8_t* data) {
+  //
+  // size is the number of readable bytes at data. Engines may read up to
+  // kMaxUserDataSize bytes, so shorter data is rejected and the engine keeps
+  // its built-in data, rather than trusting the caller to have padded it.
+  void set_user_data(int engine, const uint8_t* data, size_t size) {
     if (engine < 0 || engine >= kMaxEngines) {
       return;
+    }
+    if (size < kMaxUserDataSize) {
+      data = NULL;
     }
     user_data_[engine] = data;
     if (engine == previous_engine_index_) {

@@ -31,6 +31,9 @@
 
 namespace plaits {
 
+// Engines may read kMaxUserDataSize bytes from the flash page UserData provides.
+static_assert(UserData::SIZE == kMaxUserDataSize, "user data size mismatch");
+
 using namespace std;
 using namespace stmlib;
 

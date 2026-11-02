@@ -54,6 +54,9 @@ inline float TerrainLookup(float x, float y, const int8_t* terrain) {
   const int terrain_size = 64;
   const float value_scale = 1.0f / 128.0f;
   const float coord_scale = float(terrain_size - 2) * 0.5f;
+  static_assert(
+      terrain_size * terrain_size <= kMaxUserDataSize,
+      "custom terrain exceeds the user data page");
 
   x = (x + 1.0f) * coord_scale;
   y = (y + 1.0f) * coord_scale;
@@ -61,6 +64,12 @@ inline float TerrainLookup(float x, float y, const int8_t* terrain) {
   MAKE_INTEGRAL_FRACTIONAL(x);
   MAKE_INTEGRAL_FRACTIONAL(y);
   
+  // x and y are nominally within [-1, 1], giving indices 0 to terrain_size - 2.
+  // The quadrature path's amplitude can drift slightly, so keep each read
+  // (index and index + 1, on this row and the next) inside the grid.
+  CONSTRAIN(x_integral, 0, terrain_size - 2);
+  CONSTRAIN(y_integral, 0, terrain_size - 2);
+
   float xy[2];
   
   terrain += y_integral * terrain_size;

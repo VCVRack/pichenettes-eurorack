@@ -45,6 +45,13 @@ const int kNumCustomWaves = 15;
 const size_t kTableSize = 128;
 const float kTableSizeF = float(kTableSize);
 
+// Custom data: a 64-byte wave map, then kNumCustomWaves waves of kTableSize + 4
+// samples, clear of the two tag bytes UserData::Save() writes at the end.
+static_assert(
+    64 + kNumCustomWaves * (kTableSize + 4) * sizeof(int16_t) <=
+        kMaxUserDataSize - 2,
+    "custom wavetable data exceeds the user data page");
+
 void WavetableEngine::Init(BufferAllocator* allocator) {
   phase_ = 0.0f;
 
@@ -83,7 +90,9 @@ void WavetableEngine::LoadUserData(const uint8_t* user_data) {
       const int16_t* base = wav_integrated_waves;
       if (w >= kNumWaves) {
         base = (const int16_t*)(user_data + 64);
-        w = min(w - kNumWaves, kNumCustomWaves);
+        // Map values above the last custom wave select it. min() against
+        // kNumCustomWaves allowed a 16th wave, read past the end of the data.
+        w = min(w - kNumWaves, kNumCustomWaves - 1);
       }
       wave_map_[i] = base + size_t(w) * (kTableSize + 4);
     }
